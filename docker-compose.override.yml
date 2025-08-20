@@ -1,0 +1,12 @@
+services:
+  gm-api:
+    volumes:
+      - ./gm-api:/app
+      - /app/node_modules
+    command: npm run start:dev
+
+  gm-frontend:
+    volumes:
+      - ./gm-frontend:/app
+      - /app/node_modules
+    command: npm start
