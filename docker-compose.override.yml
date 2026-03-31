@@ -1,12 +1,6 @@
 services:
   gm-api:
-    volumes:
-      - ./gm-api:/app
-      - /app/node_modules
-    command: npm run start:dev
+    command: sh -c "yarn install && echo 'Start debugging...' && yarn start:dev"
 
   gm-frontend:
-    volumes:
-      - ./gm-frontend:/app
-      - /app/node_modules
-    command: npm start
+    command: sh -c "yarn install && yarn json-server --watch db.json --host 0.0.0.0 --port 3001 & yarn start"

@@ -23,14 +23,18 @@ services:
   gm-api:
     container_name: gm-api
     build:
-      context: ./gm-api
-      dockerfile: ../docker/gm-api.Dockerfile
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
     ports:
       - "3000:3000"
       - "9230:9230" # порт для Node.js debug
+    volumes:
+      # Bind mount всего проекта, включая node_modules с хоста.
+      # node_modules на хосте видит IDE, контейнер работает с теми же модулями.
+      - ./backend:/app
     environment:
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
@@ -46,10 +50,15 @@ services:
 
   gm-frontend:
     build:
-      context: ./gm-frontend
-      dockerfile: ../docker/gm-frontend.Dockerfile
+      context: ./frontend
+      dockerfile: ../docker/frontend.Dockerfile
     ports:
       - "4200:4200"
+      - "3001:3001"
+    volumes:
+      # Bind mount всего проекта, включая node_modules с хоста.
+      - ./frontend:/app
+      - ./docker:/app-docker
     depends_on:
       - gm-api
     profiles: [ "frontend" ]
