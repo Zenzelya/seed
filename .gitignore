@@ -1,2 +1,4 @@
 frontend/
 backend/
+bin/git-ai.sh
+.idea/
