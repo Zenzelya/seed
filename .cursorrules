@@ -1,0 +1,15 @@
+{
+    "project": "tibicen",
+    "monorepo_protocol": {
+        "strict_context_isolation": true,
+        "routing": {
+            "backend/**": "backend",
+            "frontend/**": "frontend"
+        },
+        "config_resolution": {
+            "backend": "backend/.cursorrules",
+            "frontend": "frontend/.cursorrules"
+        },
+        "default_behavior": "reject"
+    }
+}
