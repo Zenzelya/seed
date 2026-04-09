@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15
-    restart: always
+    restart: unless-stopped
     container_name: gm-postgres
     environment:
       POSTGRES_USER: postgres
@@ -9,33 +9,50 @@ services:
       POSTGRES_DB: gara-market
     ports:
       - "5432:5432"
-    profiles: [ "api" ]
+    volumes:
+      - gm-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gara-market"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: ["api"]
 
   redis:
     image: redis:7
-    restart: always
+    restart: unless-stopped
     container_name: gm-redis
     ports:
       - "6379:6379"
-    command: [ "redis-server", "--appendonly", "yes" ]
-    profiles: [ "api" ]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - gm-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    profiles: ["api"]
 
   gm-api:
     container_name: gm-api
+    restart: unless-stopped
     build:
       context: ./backend
       dockerfile: ../docker/backend.Dockerfile
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+    working_dir: /app
     ports:
       - "3000:3000"
-      - "9230:9230" # порт для Node.js debug
+      - "9230:9230"
     volumes:
-      # Bind mount всего проекта, включая node_modules с хоста.
-      # node_modules на хосте видит IDE, контейнер работает с теми же модулями.
       - ./backend:/app
     environment:
+      NODE_ENV: development
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
@@ -43,22 +60,43 @@ services:
       DATABASE_NAME: gara-market
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      CHOKIDAR_USEPOLLING: "false"
+      WATCHPACK_POLLING: "false"
     depends_on:
-      - postgres
-      - redis
-    profiles: [ "api" ]
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["yarn", "start:dev"]
+    profiles: ["api"]
 
   gm-frontend:
+    container_name: gm-frontend
+    restart: unless-stopped
     build:
       context: ./frontend
       dockerfile: ../docker/frontend.Dockerfile
+    working_dir: /app
     ports:
       - "4200:4200"
       - "3001:3001"
     volumes:
-      # Bind mount всего проекта, включая node_modules с хоста.
       - ./frontend:/app
-      - ./docker:/app-docker
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "false"
+      WATCHPACK_POLLING: "false"
     depends_on:
-      - gm-api
-    profiles: [ "frontend" ]
+      gm-api:
+        condition: service_started
+    command:
+      [
+        "sh",
+        "-c",
+        "yarn json-server --watch db.json --host 0.0.0.0 --port 3001 & yarn start"
+      ]
+    profiles: ["frontend"]
+
+volumes:
+  gm-postgres-data:
+  gm-redis-data:
