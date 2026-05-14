@@ -7,18 +7,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libxml2-dev \
-    libxslt-dev \
+    libxml2 \
+    libxslt1.1 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir --upgrade pip
 
 COPY requirements.txt .
 
-# Install bullmq runtime deps before bullmq itself (bullmq 0.5.x requires them present at install time)
-RUN pip install --no-cache-dir semver msgpack redis && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
