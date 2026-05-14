@@ -2,17 +2,17 @@ services:
   postgres:
     image: postgres:15
     restart: unless-stopped
-    container_name: gm-postgres
+    container_name: anki-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: gara-market
+      POSTGRES_DB: anki
     ports:
       - "5432:5432"
     volumes:
-      - gm-postgres-data:/var/lib/postgresql/data
+      - anki-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gara-market"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d anki"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,12 +22,12 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
-    container_name: gm-redis
+    container_name: anki-redis
     ports:
       - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
-      - gm-redis-data:/data
+      - anki-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -36,8 +36,8 @@ services:
       start_period: 5s
     profiles: ["api"]
 
-  gm-api:
-    container_name: gm-api
+  api:
+    container_name: anki-api
     restart: unless-stopped
     build:
       context: ./backend
@@ -51,15 +51,10 @@ services:
       - "9230:9230"
     volumes:
       - ./backend:/app
+    env_file:
+      - ./backend/.env
     environment:
       NODE_ENV: development
-      DATABASE_HOST: postgres
-      DATABASE_PORT: 5432
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: root
-      DATABASE_NAME: gara-market
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
       CHOKIDAR_USEPOLLING: "false"
       WATCHPACK_POLLING: "false"
     depends_on:
@@ -70,8 +65,8 @@ services:
     command: ["yarn", "start:dev"]
     profiles: ["api"]
 
-  gm-frontend:
-    container_name: gm-frontend
+  frontend:
+    container_name: anki-frontend
     restart: unless-stopped
     build:
       context: ./frontend
@@ -79,24 +74,45 @@ services:
     working_dir: /app
     ports:
       - "4200:4200"
-      - "3001:3001"
     volumes:
       - ./frontend:/app
+      - /app/node_modules
     environment:
       NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "false"
-      WATCHPACK_POLLING: "false"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     depends_on:
-      gm-api:
+      api:
         condition: service_started
-    command:
-      [
-        "sh",
-        "-c",
-        "yarn json-server --watch db.json --host 0.0.0.0 --port 3001 & yarn start"
-      ]
-    profiles: ["frontend"]
+    command: [ "yarn", "next", "dev", "-p", "4200", "-H", "0.0.0.0" ]
+    profiles: [ "frontend" ]
+
+  parser:
+    container_name: anki-parser
+    restart: unless-stopped
+    build:
+      context: ./parser
+      dockerfile: ../docker/parser.Dockerfile
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./parser:/app
+      - /app/venv
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles: [ "api" ]
 
 volumes:
-  gm-postgres-data:
-  gm-redis-data:
+  anki-postgres-data:
+  anki-redis-data:
