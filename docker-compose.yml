@@ -51,6 +51,7 @@ services:
       - "9230:9230"
     volumes:
       - ./backend:/app
+      - ./backend/data:/data:ro
     env_file:
       - ./backend/.env
     environment:
@@ -98,7 +99,7 @@ services:
       - "8000:8000"
     volumes:
       - ./parser:/app
-      - /app/venv
+      - ./backend/data:/data:ro
     environment:
       REDIS_HOST: redis
       REDIS_PORT: 6379
