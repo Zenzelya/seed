@@ -1,4 +1,6 @@
 frontend/
-backend/
+backend/*
+!backend/doc/
 bin/git-ai.sh
 .idea/
+.claude/
