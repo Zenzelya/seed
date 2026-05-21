@@ -1,0 +1,110 @@
+# ПЛАН РЕФАКТОРИНГА BACKEND
+
+## 🔴 КРИТИЧНО
+
+### 1. Миграции вместо synchronize: true
+- Отключить `synchronize: true` в TypeORM конфиге
+- Написать миграции для всех актуальных таблиц:
+  words, word_forms, word_senses, concepts, sense_texts,
+  word_relations, languages, import_runs, import_exceptions,
+  cards, card_templates, decks, card_decks, folders, folder_decks,
+  user_template_preferences, deck_template_preferences,
+  wiktionary_cache, word_details, parse_failures
+- Удалить/исправить старую миграцию CreateDictionaryModule
+  (создаёт word_meanings, word_translations — таблиц уже нет)
+- Добавить npm script: "migration:run", "migration:revert", "migration:generate"
+
+### 2. Типизация JWT payload и guards ✅
+- Создать интерфейс JwtPayload в auth/dto/jwt-payload.dto.ts
+- Расширить Express.Request: declare module 'express' { interface Request { user?: JwtPayload } }
+- Убрать any из: CurrentUserDecorator, RolesGuard, IsSelfOrSuperGuard, CsrfGuard
+- Убрать any из jwt.strategy.ts (validate метод)
+
+### 3. Фикс bcrypt ✅
+- Заменить require('bcrypt') на import * as bcrypt from 'bcrypt'
+- Установить @types/bcrypt если не установлен
+- Убрать все no-unsafe-call / no-unsafe-return ошибки в bcrypt.service.ts
+
+
+## 🟡 ВАЖНО
+
+### 4. DictionaryFacade — убрать raw SQL, перейти на репозиторий ✅
+- Создать WordImportRepository с методами:
+    upsertWord(), upsertWordForms(), findOrCreateWordSense(),
+    addSenseText(), upsertWordRelation()
+- Перенести raw manager.query() в репозиторий с маппингом DB-ошибок
+- DictionaryFacade должен использовать репозиторий, а не manager.query напрямую
+- Альтернатива: вынести import-специфичную логику в dict-import модуль
+
+### 5. ResultAsync в import pipeline
+- ImportOrchestrator: заменить throws на ResultAsync
+- WiktionaryPipeline: обернуть критичные операции в ResultAsync
+- Унифицировать error handling с остальным стеком
+
+### 6. Swagger документация на контроллерах ✅
+- Добавить @ApiTags() на все контроллеры
+- Добавить @ApiBearerAuth() на защищённые роуты
+- Добавить @ApiOperation() и @ApiResponse() на все endpoints:
+    AuthController, UsersController, DeckController,
+    CardController, CardTemplateController,
+    TemplatePreferenceController, FolderController,
+    LanguageController, WordController, WordFormController,
+    WordSenseController, WordRelationController
+
+### 7. parse модуль — завершить или удалить
+- Определить: нужен ли онлайн-парсинг Wiktionary
+- Если да: интегрировать ParseService в основной флоу обогащения слов
+- Если нет: удалить модуль, entities (WordDetails, WiktionaryCache, ParseFailure),
+  queue, producer, consumer
+- Четко разграничить: dict-import = импорт из файлов, parse = онлайн API
+
+### 8. Тесты — добавить unit-тесты
+- BaseService: unit-тест для findAll, findOne, create, update, remove
+- BaseRepository: unit-тест с мок TypeORM репозиторием
+- Стратегии валидации словоформ (de-verb, de-noun, de-adjective и др.)
+- AuthService: unit-тест login, register, refreshTokens
+- DomainExceptionFilter: unit-тест маппинга ошибок → HTTP
+
+
+## 🟢 УЛУЧШЕНИЯ
+
+### 9. Удалить мёртвый код
+- Удалить интерфейс WordHandle из dictionary.facade.ts (нигде не используется)
+- Удалить AppService / app.service.ts (содержит только getHello заглушку)
+  или переименовать в HealthService с реальным health check
+
+### 10. Тесты — типизация supertest в интеграционных тестах
+- 88 ошибок no-unsafe-argument в spec файлах из-за any типа app
+- Добавить helper: getApp(): INestApplication
+- Заменить app.getHttpServer() as any → типизированный wrapper
+
+### 11. Логирование в import pipeline
+- WiktionaryPipeline использует console.log вместо PinoLogger
+- Заменить на @InjectPinoLogger + this.logger.info()
+- Унифицировать с остальным стеком
+
+### 12. Конфиг для очередей
+- Имена очередей захардкожены в constants
+- Вынести в config namespace (queue.config.ts)
+- Добавить в env.schema.ts: QUEUE_* переменные
+
+### 13. ErrorReasons — проверить использование
+- ErrorReasons импортируется в нескольких местах но не используется
+- Либо удалить, либо реально использовать в error-definitions.ts
+
+
+## ПОРЯДОК ВЫПОЛНЕНИЯ
+
+1. Задача 3  (bcrypt)           — XS, 30 мин
+2. Задача 2  (JWT типизация)    — S,  2-3 ч
+3. Задача 1  (миграции)         — L,  1-2 дня
+4. Задача 4  (DictionaryFacade) — M,  4-6 ч
+5. Задача 9  (мёртвый код)      — XS, 30 мин
+6. Задача 5  (ResultAsync)      — M,  4-6 ч
+7. Задача 6  (Swagger)          — M,  4-6 ч
+8. Задача 7  (parse модуль)     — M,  2-4 ч
+9. Задача 11 (логирование)      — S,  1-2 ч
+10. Задача 8  (unit-тесты)      — L,  2-3 дня
+11. Задача 10 (int-тесты)       — S,  2-3 ч
+12. Задача 12 (очереди конфиг)  — S,  1-2 ч
+13. Задача 13 (ErrorReasons)    — XS, 30 мин
