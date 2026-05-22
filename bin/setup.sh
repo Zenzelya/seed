@@ -148,7 +148,47 @@ else
 fi
 
 # ─────────────────────────────────────────
-# 8. Lazydocker
+# 8. Node.js (nvm)
+# ─────────────────────────────────────────
+step "Настройка Node.js через nvm..."
+
+NODE_VERSION=$(grep -m1 'FROM node:' "$PROJECT_ROOT/docker/frontend.Dockerfile" \
+    | sed 's/FROM node:\([0-9]*\).*/\1/')
+info "Версия Node в контейнере: $NODE_VERSION"
+
+# Записать .nvmrc в корень проекта
+echo "$NODE_VERSION" > "$PROJECT_ROOT/.nvmrc"
+
+# Установить nvm если нет
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ ! -f "$NVM_DIR/nvm.sh" ]; then
+    info "Устанавливаю nvm..."
+    NVM_LATEST=$(curl -s https://api.github.com/repos/nvm-sh/nvm/releases/latest \
+        | grep '"tag_name"' | sed 's/.*"\(v[^"]*\)".*/\1/')
+    curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+    ok "nvm ${NVM_LATEST} установлен"
+else
+    ok "nvm уже установлен"
+fi
+
+# Загрузить nvm в текущую сессию
+# shellcheck source=/dev/null
+source "$NVM_DIR/nvm.sh"
+
+# Установить нужную версию и сделать дефолтной
+SYSTEM_NODE=$(node -v 2>/dev/null | sed 's/v\([0-9]*\).*/\1/' || echo "0")
+if [ "$SYSTEM_NODE" != "$NODE_VERSION" ]; then
+    info "Системный Node: ${SYSTEM_NODE:-не установлен}, нужен: $NODE_VERSION"
+    nvm install "$NODE_VERSION"
+    nvm alias default "$NODE_VERSION"
+    nvm use "$NODE_VERSION"
+    ok "Node $NODE_VERSION установлен и назначен дефолтным"
+else
+    ok "Node $NODE_VERSION уже активен"
+fi
+
+# ─────────────────────────────────────────
+# 9. Lazydocker
 # ─────────────────────────────────────────
 step "Установка lazydocker..."
 

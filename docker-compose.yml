@@ -63,7 +63,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["yarn", "start:dev"]
+    command: ["npm", "run", "start:dev"]
     profiles: ["api"]
 
   front:

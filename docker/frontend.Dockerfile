@@ -10,7 +10,7 @@ RUN if getent passwd node; then deluser --remove-home node; fi && \
     adduser -u ${UID} -G node -s /bin/sh -D node
 
 WORKDIR /app
-RUN chown node:node /app
+RUN mkdir -p /app/node_modules /app/.next && chown -R node:node /app
 
 ENV PATH="/app/node_modules/.bin:$PATH"
 
@@ -22,4 +22,4 @@ USER node
 EXPOSE 4200
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["yarn", "next", "dev", "-p", "4200", "-H", "0.0.0.0"]
+CMD ["npm", "run", "dev"]

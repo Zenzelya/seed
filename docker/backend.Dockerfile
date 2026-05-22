@@ -19,4 +19,4 @@ USER node
 EXPOSE 3000
 EXPOSE 9230
 
-CMD ["yarn", "start:dev"]
+CMD ["npm", "run", "start:dev"]

@@ -1,3 +1,3 @@
 services:
   api:
-    command: sh -c "yarn install && echo 'Start debugging...' && yarn start:dev"
+    command: ["npm", "run", "start:dev"]

@@ -4,3 +4,4 @@ backend/*
 bin/git-ai.sh
 .idea/
 .claude/
+./bin/combined_code.txt
