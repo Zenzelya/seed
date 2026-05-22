@@ -1,8 +1,8 @@
 services:
-  postgres:
+  db:
     image: postgres:15
     restart: unless-stopped
-    container_name: anki-postgres
+    container_name: anki-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - anki-postgres-data:/var/lib/postgresql/data
+      - anki-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d anki"]
       interval: 5s
@@ -59,41 +59,41 @@ services:
       CHOKIDAR_USEPOLLING: "false"
       WATCHPACK_POLLING: "false"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: ["yarn", "start:dev"]
     profiles: ["api"]
 
-  frontend:
-    container_name: anki-frontend
+  front:
+    container_name: anki-front
     restart: unless-stopped
     build:
-      context: ./frontend
-      dockerfile: ../docker/frontend.Dockerfile
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     working_dir: /app
     ports:
       - "4200:4200"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     environment:
       NODE_ENV: development
-      CHOKIDAR_USEPOLLING: "true"
-      WATCHPACK_POLLING: "true"
-    depends_on:
-      api:
-        condition: service_started
-    command: [ "yarn", "next", "dev", "-p", "4200", "-H", "0.0.0.0" ]
-    profiles: [ "frontend" ]
+      CHOKIDAR_USEPOLLING: "false"
+      WATCHPACK_POLLING: "false"
+    profiles: [ "front" ]
 
-  parser:
-    container_name: anki-parser
+  fast:
+    container_name: anki-fast
     restart: unless-stopped
     build:
-      context: ./parser
-      dockerfile: ../docker/parser.Dockerfile
+      context: .
+      dockerfile: docker/parser.Dockerfile
     working_dir: /app
     ports:
       - "8000:8000"
@@ -116,5 +116,5 @@ services:
     profiles: [ "api" ]
 
 volumes:
-  anki-postgres-data:
+  anki-db-data:
   anki-redis-data:

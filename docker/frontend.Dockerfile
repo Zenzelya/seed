@@ -1,10 +1,25 @@
 # frontend.Dockerfile
 FROM node:22-alpine
 
+ARG UID=1000
+ARG GID=1000
+
+RUN if getent passwd node; then deluser --remove-home node; fi && \
+    if getent group node; then delgroup node; fi && \
+    addgroup -g ${GID} node && \
+    adduser -u ${UID} -G node -s /bin/sh -D node
+
 WORKDIR /app
+RUN chown node:node /app
+
 ENV PATH="/app/node_modules/.bin:$PATH"
 
-EXPOSE 4200
-EXPOSE 3001
+COPY docker/frontend-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-CMD ["yarn", "dev"]
+USER node
+
+EXPOSE 4200
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["yarn", "next", "dev", "-p", "4200", "-H", "0.0.0.0"]

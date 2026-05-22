@@ -1,0 +1,59 @@
+#!/bin/bash
+set -e
+
+# Collect --profile flags from docker-compose.yml in current dir
+profile_flags() {
+    docker compose config --profiles 2>/dev/null \
+        | awk '{printf "--profile %s ", $1}' \
+        || true
+}
+
+# Try bash, fall back to sh
+exec_shell() {
+    docker compose exec "$1" bash 2>/dev/null || docker compose exec "$1" sh
+}
+
+case "$1" in
+  all)
+    docker compose $(profile_flags) up --build
+    ;;
+  rebuild)
+    docker compose $(profile_flags) down
+    docker compose $(profile_flags) up --build
+    ;;
+  api)
+    exec_shell api
+    ;;
+  front)
+    exec_shell front
+    ;;
+  fast)
+    exec_shell fast
+    ;;
+  db)
+    exec_shell db
+    ;;
+  redis)
+    exec_shell redis
+    ;;
+  logs)
+    docker compose logs -f ${2:-}
+    ;;
+  ui)
+    lazydocker
+    ;;
+  *)
+    echo "Usage: doc <command>"
+    echo ""
+    echo "  all        запустить все контейнеры"
+    echo "  rebuild    пересобрать и перезапустить (волюмы БД сохраняются)"
+    echo "  api        терминал api"
+    echo "  front      терминал frontend"
+    echo "  fast       терминал parser"
+    echo "  db         терминал postgres"
+    echo "  redis      терминал redis"
+    echo "  logs [svc] логи всех или конкретного сервиса"
+    echo "  ui         lazydocker"
+    exit 1
+    ;;
+esac
