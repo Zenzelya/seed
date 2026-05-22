@@ -10,13 +10,17 @@ RUN if getent passwd node; then deluser --remove-home node; fi && \
     adduser -u ${UID} -G node -s /bin/sh -D node
 
 WORKDIR /app
-RUN chown node:node /app
+RUN mkdir -p /app/node_modules && chown -R node:node /app
 
 ENV PATH="/app/node_modules/.bin:$PATH"
+
+COPY docker/backend-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 USER node
 
 EXPOSE 3000
 EXPOSE 9230
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["npm", "run", "start:dev"]

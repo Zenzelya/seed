@@ -1,7 +1,9 @@
 frontend/
-backend/*
-!backend/doc/
+backend/
+redis/
+paerser/
 bin/git-ai.sh
 .idea/
 .claude/
+.vscode/
 ./bin/combined_code.txt

@@ -40,8 +40,8 @@ services:
     container_name: anki-api
     restart: unless-stopped
     build:
-      context: ./backend
-      dockerfile: ../docker/backend.Dockerfile
+      context: .
+      dockerfile: docker/backend.Dockerfile
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
@@ -51,6 +51,7 @@ services:
       - "9230:9230"
     volumes:
       - ./backend:/app
+      - /app/node_modules
       - ./backend/data:/data:ro
     env_file:
       - ./backend/.env
