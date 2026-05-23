@@ -1,59 +1,115 @@
 #!/bin/bash
 set -e
 
-# Collect --profile flags from docker-compose.yml in current dir
-profile_flags() {
-    docker compose config --profiles 2>/dev/null \
-        | awk '{printf "--profile %s ", $1}' \
-        || true
+# Проверка: запускать только из корня проекта
+if [ ! -f "$PWD/docker-compose.yml" ]; then
+    echo "[-] docker-compose.yml не найден."
+    echo "    Запускай из корня проекта или выполни: bin/setup.sh"
+    exit 1
+fi
+
+# Проверить/пересчитать порты перед стартом
+_check_ports() {
+    if [ -f "$PWD/bin/reset-ports.sh" ]; then
+        bash "$PWD/bin/reset-ports.sh" --auto
+    fi
 }
 
-# Try bash, fall back to sh
-exec_shell() {
-    docker compose exec "$1" bash 2>/dev/null || docker compose exec "$1" sh
+# Удалить конкретные сервисы (все кроме db и redis)
+_remove_app_services() {
+    local app_svcs
+    app_svcs=$(docker compose ps --services 2>/dev/null | grep -vE '^(db|redis)$' | tr '\n' ' ')
+    if [ -n "$app_svcs" ]; then
+        # shellcheck disable=SC2086
+        docker compose stop $app_svcs 2>/dev/null || true
+        # shellcheck disable=SC2086
+        docker compose rm -f $app_svcs 2>/dev/null || true
+    else
+        echo "[*] Нет app-сервисов для удаления"
+    fi
+}
+
+DC="docker compose --project-directory $PWD"
+
+# Войти в контейнер (bash или sh)
+_exec_shell() {
+    $DC exec "$1" bash 2>/dev/null || $DC exec "$1" sh
 }
 
 case "$1" in
   all)
-    docker compose $(profile_flags) up --build
+    _check_ports
+    $DC up --build
     ;;
   rebuild)
-    docker compose $(profile_flags) down
-    docker compose $(profile_flags) up --build
+    _check_ports
+    $DC down
+    $DC up --build
+    ;;
+  stop)
+    $DC stop
+    ;;
+  down)
+    $DC down
+    ;;
+  down:app)
+    _remove_app_services
+    ;;
+  nuke)
+    echo ""
+    echo -e "\033[0;31m[!] ВНИМАНИЕ: удалит ВСЕ данные проекта включая volumes БД!\033[0m"
+    echo -e "    Проект: $(basename "$PWD")"
+    echo ""
+    read -r -p "    Продолжить? [y/N]: " confirm
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        $DC down --volumes --remove-orphans
+        echo "[✓] Проект полностью удалён"
+    else
+        echo "[*] Отменено"
+    fi
     ;;
   api)
-    exec_shell api
+    _exec_shell api
     ;;
   front)
-    exec_shell front
+    _exec_shell front
     ;;
   fast)
-    exec_shell fast
+    _exec_shell fast
     ;;
   db)
-    exec_shell db
+    _exec_shell db
     ;;
   redis)
-    exec_shell redis
+    _exec_shell redis
     ;;
   logs)
-    docker compose logs -f ${2:-}
+    $DC logs -f ${2:-}
     ;;
   ui)
     lazydocker
     ;;
   *)
-    echo "Usage: doc <command>"
+    echo "Использование: doc <команда>"
     echo ""
-    echo "  all        запустить все контейнеры"
-    echo "  rebuild    пересобрать и перезапустить (волюмы БД сохраняются)"
-    echo "  api        терминал api"
-    echo "  front      терминал frontend"
-    echo "  fast       терминал parser"
-    echo "  db         терминал postgres"
-    echo "  redis      терминал redis"
-    echo "  logs [svc] логи всех или конкретного сервиса"
-    echo "  ui         lazydocker"
+    echo "  Управление:"
+    echo "    all        запустить все сервисы (проверка портов автоматически)"
+    echo "    rebuild    пересобрать и перезапустить"
+    echo "    stop       остановить контейнеры (данные сохраняются)"
+    echo "    down       удалить контейнеры и сети (volumes сохраняются)"
+    echo "    down:app   удалить app-контейнеры, оставить db и redis"
+    echo "    nuke       полное удаление с volumes [требует подтверждения]"
+    echo ""
+    echo "  Терминалы:"
+    echo "    api        терминал в api"
+    echo "    front      терминал в frontend"
+    echo "    fast       терминал в parser"
+    echo "    db         терминал в postgres"
+    echo "    redis      терминал в redis"
+    echo ""
+    echo "  Прочее:"
+    echo "    logs [svc] логи всех или конкретного сервиса"
+    echo "    ui         lazydocker"
     exit 1
     ;;
 esac

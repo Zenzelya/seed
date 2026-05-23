@@ -10,7 +10,7 @@ RUN if getent passwd node; then deluser --remove-home node; fi && \
     adduser -u ${UID} -G node -s /bin/sh -D node
 
 WORKDIR /app
-RUN mkdir -p /app/node_modules /app/.next && chown -R node:node /app
+RUN mkdir -p /app/node_modules && chown -R node:node /app
 
 ENV PATH="/app/node_modules/.bin:$PATH"
 

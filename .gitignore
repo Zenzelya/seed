@@ -7,3 +7,13 @@ bin/git-ai.sh
 .claude/
 .vscode/
 ./bin/combined_code.txt
+
+# env: commit only the template, keep real config local
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# generated per-project, not shared
+docker-compose.yml
+doc/

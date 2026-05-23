@@ -1,0 +1,23 @@
+  api:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    working_dir: /app
+    ports:
+      - "${API_PORT}:3000"
+      - "${API_DEBUG_PORT}:9230"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/data:/data:ro
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "false"
+      WATCHPACK_POLLING: "false"
+    command: ["npm", "run", "start:dev"]

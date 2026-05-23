@@ -1,0 +1,15 @@
+  fast:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/parser.Dockerfile
+    working_dir: /app
+    ports:
+      - "${PARSER_PORT}:8000"
+    volumes:
+      - ./parser:/app
+      - ./backend/data:/data:ro
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

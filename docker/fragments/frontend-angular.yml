@@ -1,0 +1,19 @@
+  front:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    working_dir: /app
+    ports:
+      - "${FRONT_PORT}:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "false"
+      WATCHPACK_POLLING: "false"
+    command: ["npm", "start"]
