@@ -6,6 +6,19 @@
 PROJECTS_CONF="${HOME}/.config/docker-projects.conf"
 
 _G='\033[0;32m'; _Y='\033[1;33m'; _R='\033[0;31m'; _C='\033[0;36m'; _N='\033[0m'
+
+# Читает "name" из package.json корня проекта; fallback — имя папки.
+# Нормализует: lowercase, [^a-z0-9_-] → '_'
+_get_project_name() {
+    local root="${1:-$PROJECT_ROOT}"
+    local name=""
+    if [ -f "$root/package.json" ]; then
+        name=$(grep -m1 '"name"' "$root/package.json" \
+               | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    fi
+    [ -z "$name" ] && name=$(basename "$root")
+    echo "$name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]/_/g'
+}
 _lib_ok()   { echo -e "${_G}[✓]${_N} $1" >&2; }
 _lib_info() { echo -e "${_C}[*]${_N} $1" >&2; }
 _lib_warn() { echo -e "${_Y}[!]${_N} $1" >&2; }
@@ -88,11 +101,19 @@ build_compose() {
         local has_vol=0
         [[ $sel == *4* ]] && has_vol=1
         [[ $sel == *5* ]] && has_vol=1
+        [[ $sel == *0* ]] && has_vol=1
+        [[ $sel == *1* || $sel == *2* ]] && has_vol=1
         if [ $has_vol -eq 1 ]; then
             echo ""
             echo "volumes:"
             [[ $sel == *4* ]] && echo "  db-data:"
             [[ $sel == *5* ]] && echo "  redis-data:"
+            [[ $sel == *0* ]] && echo "  api_node_modules:"
+            [[ $sel == *1* ]] && echo "  front_node_modules:"
+            if [[ $sel == *2* ]]; then
+                echo "  front_node_modules:"
+                echo "  front_next:"
+            fi
         fi
     } > "$out"
 }
@@ -130,7 +151,7 @@ update_sub_envs() {
 apply_slot() {
     local slot=$1 sel=$2
     local name
-    name=$(basename "${PROJECT_ROOT}")
+    name=$(_get_project_name "${PROJECT_ROOT}")
 
     ports_for_slot "$slot"
 

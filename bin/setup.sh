@@ -138,7 +138,7 @@ step "Назначение портов..."
 
 ROOT_ENV="$PROJECT_ROOT/.env"
 ENV_EXAMPLE="$PROJECT_ROOT/.env.example"
-PROJECT_NAME=$(basename "$PROJECT_ROOT")
+PROJECT_NAME=$(_get_project_name "$PROJECT_ROOT")
 
 if [ ! -f "$ROOT_ENV" ]; then
     [ ! -f "$ENV_EXAMPLE" ] && fail ".env.example не найден"

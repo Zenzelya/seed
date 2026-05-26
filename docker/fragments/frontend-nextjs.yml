@@ -11,8 +11,8 @@
       - "${FRONT_PORT}:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - front_node_modules:/app/node_modules
+      - front_next:/app/.next
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "false"

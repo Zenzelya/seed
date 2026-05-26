@@ -34,6 +34,7 @@ services:
       start_period: 5s
   api:
     restart: unless-stopped
+    shm_size: '256m'
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
@@ -46,7 +47,7 @@ services:
       - "${API_DEBUG_PORT}:9230"
     volumes:
       - ./backend:/app
-      - /app/node_modules
+      - api_node_modules:/app/node_modules
       - ./backend/data:/data:ro
     env_file:
       - ./backend/.env
@@ -73,7 +74,7 @@ services:
       - "${FRONT_PORT}:4200"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - front_node_modules:/app/node_modules
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "false"
@@ -83,3 +84,5 @@ services:
 volumes:
   db-data:
   redis-data:
+  api_node_modules:
+  front_node_modules:
